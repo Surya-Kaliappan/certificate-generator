@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Certificate Editor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+<body>
+  <button id="hamburgerMenu" aria-label="Toggle sidebar" aria-expanded="false"></button>
+  <section class="sidebar" role="complementary" aria-label="Certificate Editor Controls">
+    <h2>Certificate Editor</h2>
+    <div class="accordion-section">
+      <div class="accordion-header" data-toggle="data-inputs">Data Inputs</div>
+      <div class="accordion-content" id="data-inputs">
+        <div>
+          <label for="xlsxUpload">Upload Student Data (XLSX):</label>
+          <input type="file" id="xlsxUpload" accept=".xlsx, .xls" aria-label="Upload XLSX file">
+        </div>
+        <div>
+          <label for="imageUpload">Upload Background Image:</label>
+          <input type="file" id="imageUpload" accept="image/*" aria-label="Upload background image">
+        </div>
+      </div>
+    </div>
+    <div class="accordion-section">
+      <div class="accordion-header" data-toggle="certificate-design">Certificate Design</div>
+      <div class="accordion-content" id="certificate-design">
+        <div>
+          <label for="paragraphInput">Certificate Paragraph (use {ColumnName}):</label>
+          <textarea id="paragraphInput" rows="4" placeholder="This certifies that {Name} has completed {Course} on {Date}." aria-label="Enter certificate paragraph"></textarea>
+        </div>
+        <div>
+          <label for="textAlignInput">Text Alignment:</label>
+          <select id="textAlignInput" aria-label="Select text alignment">
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
+        <div>
+          <label for="fontSizeInput">Font Size:</label>
+          <input type="range" id="fontSizeInput" min="10" max="40" value="16" aria-label="Adjust font size">
+          <div class="range-value" id="fontSizeLabel">16px</div>
+        </div>
+        <div>
+          <label for="fontSelect">Font Family:</label>
+          <select id="fontSelect" aria-label="Select font family">
+            <option value="Arial">Arial</option>
+          </select>
+        </div>
+        <div>
+          <label for="fontColorInput">Font Color:</label>
+          <input type="color" id="fontColorInput" value="#000000" aria-label="Select font color">
+        </div>
+        <div class="text-style-controls">
+          <label>Text Style:</label>
+          <button id="boldBtn" class="style-btn" aria-label="Toggle bold text">B</button>
+          <button id="italicBtn" class="style-btn" aria-label="Toggle italic text">I</button>
+        </div>
+      </div>
+    </div>
+    <div class="accordion-section">
+      <div class="accordion-header" data-toggle="email-settings">Email Settings</div>
+      <div class="accordion-content" id="email-settings">
+        <div class="checkbox-container">
+          <input type="checkbox" id="sendEmailCheckbox" aria-label="Send emails with certificates">
+          <label for="sendEmailCheckbox">Send emails with certificates</label>
+        </div>
+        <div>
+          <label for="emailSubjectInput">Email Subject (use {ColumnName}):</label>
+          <input type="text" id="emailSubjectInput" value="Congratulations on Your Certificate, {Name}!" aria-label="Enter email subject">
+        </div>
+        <div>
+          <label for="emailBodyInput">Email Body (use {ColumnName}):</label>
+          <textarea id="emailBodyInput" rows="3" placeholder="Dear {Name},\nCongratulations on completing {Course}! Your certificate is attached.\nBest regards,\nTeam" aria-label="Enter email body"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="accordion-section">
+      <div class="accordion-header" data-toggle="progress-lists">Progress & Lists</div>
+      <div class="accordion-content" id="progress-lists">
+        <nav class="overflow-list" aria-label="Overflow Certificates">
+          <label for="overflowList">Overflow Certificates:</label>
+          <ul id="overflowList" role="listbox"></ul>
+        </nav>
+        <nav class="pdf-list" aria-label="Generated Certificates">
+          <label for="pdfList">Generated Certificates:</label>
+          <ul id="pdfList" role="listbox"></ul>
+        </nav>
+      </div>
+    </div>
+    <div class="button-bar">
+      <button id="executeBtn" aria-label="Execute certificate verification">Execute</button>
+      <button id="resetBtn" arial-label="Reset Values">Reset</button>
+      <button id="editBtn" aria-label="Edit certificate settings">Edit</button>
+      <button id="downloadPDF" aria-label="Generate certificates">Generate</button>
+    </div>
+  </section>
+  <section class="main full-width" role="main" aria-label="Certificate Preview">
+    <canvas id="canvas" width="800" height="600" aria-label="Certificate preview canvas"></canvas>
+    <div id="fontUpdateMessage" class="alert" aria-live="polite"></div>
+    <div id="progressModal">
+      <p id="batchStatus">No batches in progress</p>
+      <p id="pdfProgress">PDF Generation: 0/0</p>
+      <div class="progress-bar"><div id="pdfProgressFill" style="width: 0%"></div></div>
+      <p id="emailProgress">Email Sending: 0/0</p>
+      <div class="progress-bar"><div id="emailProgressFill" style="width: 0%"></div></div>
+    </div>
+  </section>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="/script.js" defer></script>
+</body>
+</html>
