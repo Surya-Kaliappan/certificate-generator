@@ -191,7 +191,7 @@ function applyHistoryState(state) {
 async function deleteBackgroundImage() {
   if (backgroundImageId) {
     try {
-      const response = await fetch('https://cert-gen-app.onrender.com//delete-background', {
+      const response = await fetch('https://cert-gen-app.onrender.com/delete-background', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageId: backgroundImageId })
@@ -272,7 +272,7 @@ async function clearState() {
 // Fetch available fonts from server
 async function fetchFonts() {
   try {
-    const response = await fetch('https://cert-gen-app.onrender.com//fonts');
+    const response = await fetch('https://cert-gen-app.onrender.com/fonts');
     if (!response.ok) throw new Error('Failed to fetch fonts');
     const fonts = await response.json();
     fontSelect.innerHTML = '';
@@ -293,7 +293,7 @@ async function fetchFonts() {
 async function selectFont(fontName) {
   try {
     // Fetch font file from server
-    const response = await fetch(`https://cert-gen-app.onrender.com//font/${fontName}`);
+    const response = await fetch(`https://cert-gen-app.onrender.com/font/${fontName}`);
     if (!response.ok) throw new Error(`Failed to fetch font ${fontName}`);
     
     // Get font file as ArrayBuffer
@@ -910,7 +910,7 @@ async function uploadBackgroundImage(file) {
   const formData = new FormData();
   formData.append('background', file);
   try {
-    const response = await fetch('https://cert-gen-app.onrender.com//upload-background', {
+    const response = await fetch('https://cert-gen-app.onrender.com/upload-background', {
       method: 'POST',
       body: formData
     });
@@ -1195,7 +1195,7 @@ function base64ToArrayBuffer(base64) {
 // Check email sending status
 async function checkEmailStatus(batchId) {
   try {
-    const response = await fetch(`https://cert-gen-app.onrender.com//email-status?batchId=${batchId}`);
+    const response = await fetch(`https://cert-gen-app.onrender.com/email-status?batchId=${batchId}`);
     if (!response.ok) {
       throw new Error('Failed to check email status');
     }
@@ -1212,7 +1212,7 @@ async function pollEmailStatus(batchId, totalStudents, currentEmailCount) {
   return new Promise((resolve) => {
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`https://cert-gen-app.onrender.com//email-status?batchId=${batchId}`);
+        const response = await fetch(`https://cert-gen-app.onrender.com/email-status?batchId=${batchId}`);
         if (!response.ok) {
           throw new Error('Failed to check email status');
         }
@@ -1306,7 +1306,7 @@ downloadPDFBtn.addEventListener('click', async () => {
       };
 
       // Send batch to server
-      const response = await fetch('https://cert-gen-app.onrender.com//generate-pdfs', {
+      const response = await fetch('https://cert-gen-app.onrender.com/generate-pdfs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(batchData)
