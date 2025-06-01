@@ -31,6 +31,8 @@ const hamburgerMenu = document.getElementById('hamburgerMenu');
 const sidebar = document.querySelector('.sidebar');
 const mainSection = document.querySelector('.main');
 
+const api = "https://cert-gen-app.onrender.com";
+
 // Initialize state variables
 let backgroundImage = null;
 let paragraphText = paragraphInput.value;
@@ -51,6 +53,7 @@ let userSelectedFont = 'Arial';
 let currentBold = false;
 let currentItalic = false;
 let isDragging = false;
+let rectHighlight = false;
 let dragOffset = { x: 0, y: 0 };
 let resizing = false;
 let resizeHandle = null;
@@ -191,7 +194,7 @@ function applyHistoryState(state) {
 async function deleteBackgroundImage() {
   if (backgroundImageId) {
     try {
-      const response = await fetch('https://cert-gen-app.onrender.com/delete-background', {
+      const response = await fetch(`${api}/delete-background`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageId: backgroundImageId })
@@ -272,7 +275,7 @@ async function clearState() {
 // Fetch available fonts from server
 async function fetchFonts() {
   try {
-    const response = await fetch('https://cert-gen-app.onrender.com/fonts');
+    const response = await fetch(`${api}/fonts`);
     if (!response.ok) throw new Error('Failed to fetch fonts');
     const fonts = await response.json();
     fontSelect.innerHTML = '';
@@ -293,7 +296,7 @@ async function fetchFonts() {
 async function selectFont(fontName) {
   try {
     // Fetch font file from server
-    const response = await fetch(`https://cert-gen-app.onrender.com/font/${fontName}`);
+    const response = await fetch(`${api}/font/${fontName}`);
     if (!response.ok) throw new Error(`Failed to fetch font ${fontName}`);
     
     // Get font file as ArrayBuffer
@@ -363,10 +366,32 @@ function draw(showHelpersOverride = true, text = paragraphText, student = null) 
     italic: currentItalic
   };
   if (shouldShowHelpers) {
+    if (rectHighlight) {
+      ctx.fillStyle = 'rgba(173, 216, 230, 0.3)'; // Light blue highlight during resizing
+      ctx.fillRect(settings.rect.x, settings.rect.y, settings.rect.width, settings.rect.height);
+    }
     ctx.strokeStyle = '#1e293b';
     ctx.lineWidth = 2;
     ctx.strokeRect(settings.rect.x, settings.rect.y, settings.rect.width, settings.rect.height);
-    drawHandles(settings.rect);
+    const isMobile = window.innerWidth < 768;
+    const handleSize = isMobile ? 50 : 10; // Larger handles on mobile
+    const handles = [
+      { name: 'se', x: settings.rect.x + settings.rect.width - handleSize / 2, y: settings.rect.y + settings.rect.height - handleSize / 2 },
+      { name: 's', x: settings.rect.x + settings.rect.width / 2 - handleSize / 2, y: settings.rect.y + settings.rect.height - handleSize / 2 },
+      { name: 'e', x: settings.rect.x + settings.rect.width - handleSize / 2, y: settings.rect.y + settings.rect.height / 2 - handleSize / 2 },
+      { name: 'n', x: settings.rect.x + settings.rect.width / 2 - handleSize / 2, y: settings.rect.y - handleSize / 2 },
+      { name: 'w', x: settings.rect.x - handleSize / 2, y: settings.rect.y + settings.rect.height / 2 - handleSize / 2 },
+      { name: 'nw', x: settings.rect.x - handleSize / 2, y: settings.rect.y - handleSize / 2 },
+      { name: 'ne', x: settings.rect.x + settings.rect.width - handleSize / 2, y: settings.rect.y - handleSize / 2 },
+      { name: 'sw', x: settings.rect.x - handleSize / 2, y: settings.rect.y + settings.rect.height - handleSize / 2 }
+    ];
+    ctx.fillStyle = 'blue';
+    handles.forEach(h => {
+      ctx.beginPath();
+      ctx.arc(h.x + handleSize / 2, h.y + handleSize / 2, handleSize / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.closePath();
+    });
   }
   const displayText = student ? replacePlaceholders(text, student) : text;
   const weight = settings.bold ? 'bold' : 'normal';
@@ -436,9 +461,19 @@ function getHandles(rect) {
 
 // Detect handle under cursor
 function getHandleUnderCursor(mx, my, rect) {
-  return getHandles(rect).find(h =>
-    Math.abs(h.x - mx) <= handleSize && Math.abs(h.y - my) <= handleSize
-  );
+  const isMobile = window.innerWidth < 768;
+  const handleSize = isMobile ? 30 : 10; // Larger handles on mobile
+  const handles = [
+    { name: 'se', x: rect.x + rect.width - handleSize / 2, y: rect.y + rect.height - handleSize / 2 },
+    { name: 's', x: rect.x + rect.width / 2 - handleSize / 2, y: rect.y + rect.height - handleSize / 2 },
+    { name: 'e', x: rect.x + rect.width - handleSize / 2, y: rect.y + rect.height / 2 - handleSize / 2 },
+    { name: 'n', x: rect.x + rect.width / 2 - handleSize / 2, y: rect.y - handleSize / 2 },
+    { name: 'w', x: rect.x - handleSize / 2, y: rect.y + rect.height / 2 - handleSize / 2 },
+    { name: 'nw', x: rect.x - handleSize / 2, y: rect.y - handleSize / 2 },
+    { name: 'ne', x: rect.x + rect.width - handleSize / 2, y: rect.y - handleSize / 2 },
+    { name: 'sw', x: rect.x - handleSize / 2, y: rect.y + rect.height - handleSize / 2 }
+  ];
+  return handles.find(h => mx >= h.x && mx <= h.x + handleSize && my >= h.y && my <= h.y + handleSize);
 }
 
 // Save student settings
@@ -587,26 +622,76 @@ sendEmailCheckbox.addEventListener('change', function(event){
   }
 });
 
-// Canvas mouse handlers
-canvas.addEventListener('mousedown', (e) => {
+function getEventPosition(e) {
+  const rectBounds = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rectBounds.width; // Account for canvas scaling
+  const scaleY = canvas.height / rectBounds.height;
+  const clientX = e.clientX || (e.touches && e.touches.length >= 1 && e.touches[0].clientX);
+  const clientY = e.clientY || (e.touches && e.touches.length >= 1 && e.touches[0].clientY);
+  if (clientX === undefined || clientY === undefined) return null;
+  return {
+    x: (clientX - rectBounds.left) * scaleX,
+    y: (clientY - rectBounds.top) * scaleY
+  };
+}
+
+function getHandleUnderCursor(mx, my, rect) {
+  const isMobile = window.innerWidth < 768;
+  const handleSize = isMobile ? 20 : 10; // Larger handles on mobile
+  const handles = [
+    { name: 'se', x: rect.x + rect.width - handleSize / 2, y: rect.y + rect.height - handleSize / 2 },
+    { name: 's', x: rect.x + rect.width / 2 - handleSize / 2, y: rect.y + rect.height - handleSize / 2 },
+    { name: 'e', x: rect.x + rect.width - handleSize / 2, y: rect.y + rect.height / 2 - handleSize / 2 },
+    { name: 'n', x: rect.x + rect.width / 2 - handleSize / 2, y: rect.y - handleSize / 2 },
+    { name: 'w', x: rect.x - handleSize / 2, y: rect.y + rect.height / 2 - handleSize / 2 },
+    { name: 'nw', x: rect.x - handleSize / 2, y: rect.y - handleSize / 2 },
+    { name: 'ne', x: rect.x + rect.width - handleSize / 2, y: rect.y - handleSize / 2 },
+    { name: 'sw', x: rect.x - handleSize / 2, y: rect.y + rect.height - handleSize / 2 }
+  ];
+  return handles.find(h => mx >= h.x && mx <= h.x + handleSize && my >= h.y && my <= h.y + handleSize);
+}
+
+let pinchStartDistance = null;
+let pinchStartRect = null;
+
+function getPinchDistance(touches) {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function startInteraction(e) {
+  e.preventDefault();
+  if (e.touches && e.touches.length === 2) {
+    // Start pinch-to-resize
+    pinchStartDistance = getPinchDistance(e.touches);
+    pinchStartRect = { ...currentRect };
+    rectHighlight = true; // Highlight during pinch
+    return;
+  }
+  if (e.touches && e.touches.length !== 1) return; // Ignore other multi-touch
+  const pos = getEventPosition(e);
+  if (!pos) return;
   showHelpers = true;
   draw(true, paragraphText, currentStudent);
-  const rectBounds = canvas.getBoundingClientRect();
-  const mx = e.clientX - rectBounds.left;
-  const my = e.clientY - rectBounds.top;
-  const handle = getHandleUnderCursor(mx, my, currentRect);
+  const handle = getHandleUnderCursor(pos.x, pos.y, currentRect);
   if (handle) {
     resizing = true;
     resizeHandle = handle.name;
+    rectHighlight = true; // Highlight when handle selected
     return;
   }
-  if (mx > currentRect.x && mx < currentRect.x + currentRect.width &&
-      my > currentRect.y && my < currentRect.y + currentRect.height) {
+  if (
+    pos.x > currentRect.x &&
+    pos.x < currentRect.x + currentRect.width &&
+    pos.y > currentRect.y &&
+    pos.y < currentRect.y + currentRect.height
+  ) {
     isDragging = true;
-    dragOffset.x = mx - currentRect.x;
-    dragOffset.y = my - currentRect.y;
+    dragOffset.x = pos.x - currentRect.x;
+    dragOffset.y = pos.y - currentRect.y;
   }
-});
+}
 
 document.addEventListener('click', (e) => {
   if (!canvas.contains(e.target)) {
@@ -615,15 +700,32 @@ document.addEventListener('click', (e) => {
   }
 });
 
-canvas.addEventListener('mousemove', (e) => {
-  const rectBounds = canvas.getBoundingClientRect();
-  const mx = e.clientX - rectBounds.left;
-  const my = e.clientY - rectBounds.top;
-  const handle = getHandleUnderCursor(mx, my, currentRect);
+function moveInteraction(e) {
+  e.preventDefault();
+  if (e.touches && e.touches.length === 2) {
+    // Handle pinch-to-resize
+    const currentDistance = getPinchDistance(e.touches);
+    const scale = currentDistance / pinchStartDistance;
+    currentRect.width = Math.max(50, pinchStartRect.width * scale);
+    currentRect.height = Math.max(50, pinchStartRect.height * scale);
+    saveStudentSettings(currentStudent);
+    overflowStudents = overflowStudents.filter(s => s.Name !== currentStudent?.Name);
+    const hasOverflow = draw(true, paragraphText, currentStudent);
+    if (hasOverflow && currentStudent) {
+      overflowStudents.push(currentStudent);
+    }
+    updateOverflowList();
+    updatePDFList();
+    return;
+  }
+  if (e.touches && e.touches.length !== 1) return; // Ignore other multi-touch
+  const pos = getEventPosition(e);
+  if (!pos) return;
+  const handle = getHandleUnderCursor(pos.x, pos.y, currentRect);
   if (resizing) {
     const minSize = 50;
-    const dx = mx - currentRect.x;
-    const dy = my - currentRect.y;
+    const dx = pos.x - currentRect.x;
+    const dy = pos.y - currentRect.y;
     switch (resizeHandle) {
       case 'se':
         currentRect.width = Math.max(minSize, dx);
@@ -636,41 +738,41 @@ canvas.addEventListener('mousemove', (e) => {
         currentRect.width = Math.max(minSize, dx);
         break;
       case 'n':
-        const nHeight = currentRect.height + (currentRect.y - my);
+        const nHeight = currentRect.height + (currentRect.y - pos.y);
         if (nHeight >= minSize) {
-          currentRect.y = my;
+          currentRect.y = pos.y;
           currentRect.height = nHeight;
         }
         break;
       case 'w':
-        const nwWidth = currentRect.width + (currentRect.x - mx);
+        const nwWidth = currentRect.width + (currentRect.x - pos.x);
         if (nwWidth >= minSize) {
-          currentRect.x = mx;
+          currentRect.x = pos.x;
           currentRect.width = nwWidth;
         }
         break;
       case 'nw':
-        if (currentRect.width + (currentRect.x - mx) >= minSize) {
-          currentRect.width += currentRect.x - mx;
-          currentRect.x = mx;
+        if (currentRect.width + (currentRect.x - pos.x) >= minSize) {
+          currentRect.width += currentRect.x - pos.x;
+          currentRect.x = pos.x;
         }
-        if (currentRect.height + (currentRect.y - my) >= minSize) {
-          currentRect.height += currentRect.y - my;
-          currentRect.y = my;
+        if (currentRect.height + (currentRect.y - pos.y) >= minSize) {
+          currentRect.height += currentRect.y - pos.y;
+          currentRect.y = pos.y;
         }
         break;
       case 'ne':
         if (dx >= minSize) currentRect.width = dx;
-        if (currentRect.height + (currentRect.y - my) >= minSize) {
-          currentRect.height += currentRect.y - my;
-          currentRect.y = my;
+        if (currentRect.height + (currentRect.y - pos.y) >= minSize) {
+          currentRect.height += currentRect.y - pos.y;
+          currentRect.y = pos.y;
         }
         break;
       case 'sw':
         if (dy >= minSize) currentRect.height = dy;
-        if (currentRect.width + (currentRect.x - mx) >= minSize) {
-          currentRect.width += currentRect.x - mx;
-          currentRect.x = mx;
+        if (currentRect.width + (currentRect.x - pos.x) >= minSize) {
+          currentRect.width += currentRect.x - pos.x;
+          currentRect.x = pos.x;
         }
         break;
     }
@@ -683,8 +785,8 @@ canvas.addEventListener('mousemove', (e) => {
     updateOverflowList();
     updatePDFList();
   } else if (isDragging) {
-    currentRect.x = mx - dragOffset.x;
-    currentRect.y = my - dragOffset.y;
+    currentRect.x = pos.x - dragOffset.x;
+    currentRect.y = pos.y - dragOffset.y;
     saveStudentSettings(currentStudent);
     overflowStudents = overflowStudents.filter(s => s.Name !== currentStudent?.Name);
     const hasOverflow = draw(true, paragraphText, currentStudent);
@@ -694,18 +796,30 @@ canvas.addEventListener('mousemove', (e) => {
     updateOverflowList();
     updatePDFList();
   }
-  canvas.style.cursor = handle ? `${handle.name}-resize` :
-    (mx > currentRect.x && mx < currentRect.x + currentRect.width &&
-    my > currentRect.y && my < currentRect.y + currentRect.height) ? 'move' : 'default';
-});
+  if (!e.touches) { // Cursor only for mouse events
+    canvas.style.cursor = handle ? `${handle.name}-resize` :
+      (pos.x > currentRect.x && pos.x < currentRect.x + currentRect.width &&
+       pos.y > currentRect.y && pos.y < currentRect.y + currentRect.height) ? 'move' : 'default';
+  }
+}
 
-canvas.addEventListener('mouseup', () => {
+function endInteraction(e) {
+  e.preventDefault();
+  if (e.touches && e.touches.length !== 0) return; // Ensure touch has ended
+  if (pinchStartDistance || resizing) {
+    rectHighlight = false; // Remove highlight after resizing
+    pinchStartDistance = null;
+    pinchStartRect = null;
+    if (currentStudent) {
+      saveHistory();
+    }
+  }
   isDragging = false;
   resizing = false;
   resizeHandle = null;
   if (currentStudent) {
     saveStudentSettings(currentStudent);
-    saveHistory(); // Save final state after drag or resize
+    saveHistory();
     const hasOverflow = draw(true, paragraphText, currentStudent);
     if (hasOverflow && !overflowStudents.some(s => s.Name === currentStudent.Name)) {
       overflowStudents.push(currentStudent);
@@ -713,7 +827,14 @@ canvas.addEventListener('mouseup', () => {
     updateOverflowList();
     updatePDFList();
   }
-});
+}
+
+canvas.addEventListener('mousedown', startInteraction);
+canvas.addEventListener('touchstart', startInteraction, { passive: false });
+canvas.addEventListener('mousemove', moveInteraction);
+canvas.addEventListener('touchmove', moveInteraction, { passive: false });
+canvas.addEventListener('mouseup', endInteraction);
+canvas.addEventListener('touchend', endInteraction, { passive: false });
 
 // Keyboard navigation for canvas
 canvas.addEventListener('keydown', (e) => {
@@ -910,7 +1031,7 @@ async function uploadBackgroundImage(file) {
   const formData = new FormData();
   formData.append('background', file);
   try {
-    const response = await fetch('https://cert-gen-app.onrender.com/upload-background', {
+    const response = await fetch(`${api}/upload-background`, {
       method: 'POST',
       body: formData
     });
@@ -1195,7 +1316,7 @@ function base64ToArrayBuffer(base64) {
 // Check email sending status
 async function checkEmailStatus(batchId) {
   try {
-    const response = await fetch(`https://cert-gen-app.onrender.com/email-status?batchId=${batchId}`);
+    const response = await fetch(`${api}/email-status?batchId=${batchId}`);
     if (!response.ok) {
       throw new Error('Failed to check email status');
     }
@@ -1212,7 +1333,7 @@ async function pollEmailStatus(batchId, totalStudents, currentEmailCount) {
   return new Promise((resolve) => {
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`https://cert-gen-app.onrender.com/email-status?batchId=${batchId}`);
+        const response = await fetch(`${api}/email-status?batchId=${batchId}`);
         if (!response.ok) {
           throw new Error('Failed to check email status');
         }
@@ -1306,7 +1427,7 @@ downloadPDFBtn.addEventListener('click', async () => {
       };
 
       // Send batch to server
-      const response = await fetch('https://cert-gen-app.onrender.com/generate-pdfs', {
+      const response = await fetch(`${api}/generate-pdfs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(batchData)

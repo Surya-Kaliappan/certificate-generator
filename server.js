@@ -12,9 +12,6 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // CORS configuration
-app.use(cors({
-  origin: 'https://Surya-Kaliappan.github.io' // Replace with GitHub Pages URL
-}));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -60,7 +57,7 @@ app.get('/', (req, res) => {
 // Endpoint to list available fonts
 app.get('/fonts', async (req, res) => {
   try {
-    const fontsDir = path.join(__dirname, 'fonts');
+    const fontsDir = path.join(__dirname, 'fonts','normal');
     const files = await fs.readdir(fontsDir);
     const fonts = files.filter(f => f.endsWith('.ttf')).map(f => f.replace('.ttf', ''));
     res.json(fonts);
@@ -72,7 +69,7 @@ app.get('/fonts', async (req, res) => {
 
 app.get('/font/:fontName', (req, res) => {
   const fontName = req.params.fontName;
-  const fontPath = path.join(__dirname, 'fonts', `${fontName}.ttf`);
+  const fontPath = path.join(__dirname, 'fonts', 'normal', `${fontName}.ttf`);
   res.sendFile(fontPath, { headers: { 'Content-Type': 'font/ttf' } }, (err) => {
     if (err) res.status(404).send('Font not found');
   });
@@ -133,7 +130,8 @@ app.post('/generate-pdfs', async (req, res) => {
 
       const settings = student.settings;
       const text = replacePlaceholders(paragraph, student.data);
-      const fontPath = path.join(__dirname, 'fonts', `${settings.fontFamily}.ttf`);
+      const fontPath = path.join(__dirname, 'fonts','normal', `${settings.fontFamily}.ttf`);
+      console.log(fontPath);
       let fontFile = settings.fontFamily;
 
       try {
@@ -145,7 +143,10 @@ app.post('/generate-pdfs', async (req, res) => {
 
       const weight = settings.bold ? '-Bold' : '';
       const style = settings.italic ? '-Italic' : '';
-      const fontVariant = path.join(__dirname, 'fonts', `${fontFile}${weight}${style}.ttf`);
+      let fontVariant = path.join(__dirname, 'fonts','normal',`${fontFile}.ttf`);
+      if(weight!='' && style!=''){
+        fontVariant = path.join(__dirname, 'fonts', `${fontFile}${weight}${style}.ttf`);
+      }
 
       try {
         await fs.access(fontVariant);
