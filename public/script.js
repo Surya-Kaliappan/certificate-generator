@@ -33,7 +33,7 @@ const hamburgerMenu = document.getElementById('hamburgerMenu');
 const sidebar = document.querySelector('.sidebar');
 const mainSection = document.querySelector('.main');
 
-const api = "https://cert-gen-app.onrender.com";
+const api = "http://localhost:3000"; //"https://cert-gen-app.onrender.com";
 
 // Initialize state variables
 let backgroundImage = null;
@@ -847,10 +847,8 @@ canvas.addEventListener('keydown', (e) => {
   const moveStep = 5;
   const resizeStep = 5;
   const minSize = 50;
-  console.log("Working");
   if (e.key === 'ArrowUp') {
     if (e.shiftKey) {
-      console.log("Working in up");
       const newHeight = currentRect.height - resizeStep;
       if (newHeight >= minSize) {
         currentRect.height = newHeight;
@@ -912,11 +910,9 @@ canvas.setAttribute('tabindex', '0');
 // Undo/Redo keyboard shortcuts
 document.addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
-    console.log("Crtl+Z");
     e.preventDefault();
     undo();
   } else if (e.ctrlKey && e.key === 'Z' && e.shiftKey) {
-    console.log("CRTL+SHIFT+Z");
     e.preventDefault();
     redo();
   }
