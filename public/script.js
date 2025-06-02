@@ -33,7 +33,7 @@ const hamburgerMenu = document.getElementById('hamburgerMenu');
 const sidebar = document.querySelector('.sidebar');
 const mainSection = document.querySelector('.main');
 
-const api = "http://localhost:3000"; //"https://cert-gen-app.onrender.com";
+const api = "https://cert-gen-app.onrender.com";
 
 // Initialize state variables
 let backgroundImage = null;
