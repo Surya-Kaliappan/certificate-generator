@@ -101,12 +101,15 @@
     <canvas id="canvas" width="800" height="600" aria-label="Certificate preview canvas"></canvas>
     <div id="fontUpdateMessage" class="alert" aria-live="polite"></div>
     <div id="progressModal">
+      <div id="loadingSpinner" class="spinner"></div>
       <p id="batchStatus">No batches in progress</p>
       <p id="pdfProgress">PDF Generation: 0/0</p>
       <div class="progress-bar"><div id="pdfProgressFill" style="width: 0%"></div></div>
       <p id="emailProgress">Email Sending: 0/0</p>
       <div class="progress-bar"><div id="emailProgressFill" style="width: 0%"></div></div>
+      <button id="terminateBtn" class="terminate-btn" aria-label="Terminate PDF generation">Terminate</button>
     </div>
+    <div id="modalBackdrop" class="modal-backdrop"></div>
   </section>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>

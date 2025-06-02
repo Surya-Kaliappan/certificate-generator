@@ -27,11 +27,13 @@ const pdfProgressFill = document.getElementById('pdfProgressFill');
 const emailProgress = document.getElementById('emailProgress');
 const emailProgressFill = document.getElementById('emailProgressFill');
 const progressModal = document.getElementById('progressModal');
+const terminateBtn = document.getElementById('terminateBtn'); // New: Terminate button
+const modalBackdrop = document.getElementById('modalBackdrop'); // New: Backdrop
 const hamburgerMenu = document.getElementById('hamburgerMenu');
 const sidebar = document.querySelector('.sidebar');
 const mainSection = document.querySelector('.main');
 
-const api = "https://cert-gen-app.onrender.com";
+const api =  "http://192.168.56.235:3000";  // "https://cert-gen-app.onrender.com";
 
 // Initialize state variables
 let backgroundImage = null;
@@ -119,6 +121,8 @@ const updateSidebarState = () => {
     mainSection.classList.add('full-width');
     hamburgerMenu.classList.remove('open');
     hamburgerMenu.setAttribute('aria-expanded', 'false');
+    fontSizeInput.min = 5;
+    fontSizeInput.max = 20;
   } else {
     sidebar.classList.remove('collapsed');
     sidebar.classList.add('open');
@@ -374,7 +378,7 @@ function draw(showHelpersOverride = true, text = paragraphText, student = null) 
     ctx.lineWidth = 2;
     ctx.strokeRect(settings.rect.x, settings.rect.y, settings.rect.width, settings.rect.height);
     const isMobile = window.innerWidth < 768;
-    const handleSize = isMobile ? 50 : 10; // Larger handles on mobile
+    const handleSize = isMobile ? 20 : 15; // Larger handles on mobile
     const handles = [
       { name: 'se', x: settings.rect.x + settings.rect.width - handleSize / 2, y: settings.rect.y + settings.rect.height - handleSize / 2 },
       { name: 's', x: settings.rect.x + settings.rect.width / 2 - handleSize / 2, y: settings.rect.y + settings.rect.height - handleSize / 2 },
@@ -385,7 +389,7 @@ function draw(showHelpersOverride = true, text = paragraphText, student = null) 
       { name: 'ne', x: settings.rect.x + settings.rect.width - handleSize / 2, y: settings.rect.y - handleSize / 2 },
       { name: 'sw', x: settings.rect.x - handleSize / 2, y: settings.rect.y + settings.rect.height - handleSize / 2 }
     ];
-    ctx.fillStyle = 'blue';
+    ctx.fillStyle = 'rgba(60, 111, 199, 0.94)';
     handles.forEach(h => {
       ctx.beginPath();
       ctx.arc(h.x + handleSize / 2, h.y + handleSize / 2, handleSize / 2, 0, Math.PI * 2);
@@ -843,9 +847,10 @@ canvas.addEventListener('keydown', (e) => {
   const moveStep = 5;
   const resizeStep = 5;
   const minSize = 50;
-
+  console.log("Working");
   if (e.key === 'ArrowUp') {
     if (e.shiftKey) {
+      console.log("Working in up");
       const newHeight = currentRect.height - resizeStep;
       if (newHeight >= minSize) {
         currentRect.height = newHeight;
@@ -934,6 +939,7 @@ if (window.innerWidth <= 768) {
   mainSection.classList.add('full-width');
   hamburgerMenu.classList.remove('open');
   hamburgerMenu.setAttribute('aria-expanded', 'false');
+
 } else {
   sidebar.classList.remove('collapsed');
   sidebar.classList.add('open');
@@ -1293,6 +1299,7 @@ editBtn.addEventListener('click', () => {
   updateOverflowList();
   updatePDFList();
   editBtn.style.display = 'none';
+  resetBtn.style.display = 'none';
   executeBtn.style.display = 'block';
   executeBtn.disabled = false;
   draw(true, paragraphText, currentStudent);
@@ -1370,15 +1377,28 @@ downloadPDFBtn.addEventListener('click', async () => {
   downloadPDFBtn.disabled = true;
   downloadPDFBtn.textContent = 'Processing Batches...';
   progressModal.classList.add('visible');
+  modalBackdrop.classList.add('visible'); // Show blue backdrop
+  canvas.classList.add('disabled'); // Disable main content
+  sidebar.classList.add('disabled'); // Disable sidebar
+  terminateBtn.disabled = false; // Ensure terminate button is enabled
   const totalBatches = Math.ceil(studentData.length / BATCH_SIZE);
   const totalStudents = studentData.length;
   let previousBatch = null;
   let success = true;
   let totalProcessedPDFs = 0;
   let totalProcessedEmails = 0;
+  const controller = new AbortController(); // For terminating fetch
+  const signal = controller.signal;
+
+  // Handle terminate button click
+  const handleTerminate = () => {
+    controller.abort(); // Cancel ongoing fetch requests
+    terminateBtn.disabled = true; // Disable button during termination
+    terminateBtn.textContent = 'Terminating...';
+  };
+  terminateBtn.addEventListener('click', handleTerminate, { once: true });
 
   try {
-    progressModal.classList.add('visible'); // Show modal
     for (let batch = 0; batch < totalBatches; batch++) {
       const start = batch * BATCH_SIZE;
       const end = Math.min(start + BATCH_SIZE, studentData.length);
@@ -1387,10 +1407,10 @@ downloadPDFBtn.addEventListener('click', async () => {
       batchStatus.textContent = `Processing Batch ${batch + 1} of ${totalBatches} (${batchStudents.length} students)`;
       pdfProgress.textContent = `PDF Generation: ${totalProcessedPDFs}/${totalStudents}`;
       pdfProgressFill.style.width = `${(totalProcessedPDFs / totalStudents) * 100}%`;
-      pdfProgressFill.style.backgroundColor = 'green'; // Set PDF progress color
+      pdfProgressFill.style.backgroundColor = 'green';
       emailProgress.textContent = `Email Sending: ${totalProcessedEmails}/${totalStudents}`;
       emailProgressFill.style.width = `${(totalProcessedEmails / totalStudents) * 100}%`;
-      emailProgressFill.style.backgroundColor = 'blue'; // Set email progress color
+      emailProgressFill.style.backgroundColor = 'orange'; // Match original UI
 
       // Wait for previous batch emails
       if (previousBatch && sendEmailCheckbox.checked) {
@@ -1400,7 +1420,7 @@ downloadPDFBtn.addEventListener('click', async () => {
           success = false;
           break;
         }
-        totalProcessedEmails = emailStatus.emailCount; // Update cumulative email count
+        totalProcessedEmails = emailStatus.emailCount;
       }
 
       const batchData = {
@@ -1410,11 +1430,8 @@ downloadPDFBtn.addEventListener('click', async () => {
         emailSubject: emailSubjectInput.value,
         emailBody: emailBodyInput.value,
         canvas: { width: canvas.width, height: canvas.height },
-        students: batchStudents.map(student => ({
-          fileName: `certificate_${student.Name.replace(/\s+/g, '_')}.pdf`,
-          email: student.Email,
-          data: student,
-          settings: studentSettings[student.Name] || {
+        students: batchStudents.map(student => {
+          const settings = studentSettings[student.Name] || {
             rect: currentRect,
             fontSize: currentFontSize,
             textAlign: currentTextAlign,
@@ -1422,15 +1439,33 @@ downloadPDFBtn.addEventListener('click', async () => {
             fontFamily: userSelectedFont,
             bold: currentBold,
             italic: currentItalic
+          };
+          let fontVariant = settings.fontFamily;
+          if (settings.bold && settings.italic) {
+            fontVariant += '-BoldItalic';
+          } else if (settings.bold) {
+            fontVariant += '-Bold';
+          } else if (settings.italic) {
+            fontVariant += '-Italic';
           }
-        }))
+          return {
+            fileName: `certificate_${student.Name.replace(/\s+/g, '_')}.pdf`,
+            email: student.Email,
+            data: student,
+            settings: {
+              ...settings,
+              fontVariant,
+            }
+          };
+        })
       };
 
-      // Send batch to server
+      // Send batch to server with abort signal
       const response = await fetch(`${api}/generate-pdfs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(batchData)
+        body: JSON.stringify(batchData),
+        signal // Attach abort signal
       });
 
       if (!response.ok) {
@@ -1438,16 +1473,16 @@ downloadPDFBtn.addEventListener('click', async () => {
       }
 
       const { zipBlob, pdfCount, emailCount } = await response.json();
-      totalProcessedPDFs += pdfCount; // Accumulate PDFs
-      totalProcessedEmails += emailCount; // Accumulate initial emails (likely 0)
+      totalProcessedPDFs += pdfCount;
+      totalProcessedEmails += emailCount;
       pdfProgress.textContent = `PDF Generation: ${totalProcessedPDFs}/${totalStudents}`;
       pdfProgressFill.style.width = `${(totalProcessedPDFs / totalStudents) * 100}%`;
-      pdfProgressFill.style.backgroundColor = 'green'; // Maintain PDF progress color
+      pdfProgressFill.style.backgroundColor = 'green';
       emailProgress.textContent = `Email Sending: ${totalProcessedEmails}/${totalStudents}`;
       emailProgressFill.style.width = `${(totalProcessedEmails / totalStudents) * 100}%`;
-      emailProgressFill.style.backgroundColor = 'blue'; // Maintain email progress color
+      emailProgressFill.style.backgroundColor = 'orange';
 
-      // Download ZIP file for this batch
+      // Download ZIP file
       const zipArrayBuffer = base64ToArrayBuffer(zipBlob);
       const blob = new Blob([zipArrayBuffer], { type: 'application/zip' });
       const url = window.URL.createObjectURL(blob);
@@ -1459,7 +1494,7 @@ downloadPDFBtn.addEventListener('click', async () => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      // Poll email status if emails are enabled
+      // Poll email status
       if (sendEmailCheckbox.checked) {
         const emailStatus = await pollEmailStatus(batchId, totalStudents, totalProcessedEmails);
         if (emailStatus.status === 'error') {
@@ -1467,7 +1502,7 @@ downloadPDFBtn.addEventListener('click', async () => {
           success = false;
           break;
         }
-        totalProcessedEmails = emailStatus.emailCount; // Update cumulative email count
+        totalProcessedEmails = emailStatus.emailCount;
       }
 
       previousBatch = batchId;
@@ -1479,18 +1514,26 @@ downloadPDFBtn.addEventListener('click', async () => {
       showAlert('Some batches failed to process');
     }
   } catch (error) {
-    console.error('Error processing batches:', error);
-    showAlert(`Error: ${error.message}`);
-    success = false;
+    if (error.name === 'AbortError') {
+      showAlert('PDF generation terminated by user');
+    } else {
+      console.error('Error processing batches:', error);
+      showAlert(`Error: ${error.message}`);
+      success = false;
+    }
   } finally {
     downloadPDFBtn.disabled = false;
     downloadPDFBtn.textContent = 'Generate Certificates';
-    progressModal.classList.remove('visible'); // Hide modal
+    progressModal.classList.remove('visible');
+    modalBackdrop.classList.remove('visible'); // Hide backdrop
+    mainSection.classList.remove('disabled'); // Re-enable main content
+    sidebar.classList.remove('disabled'); // Re-enable sidebar
+    terminateBtn.disabled = true; // Disable terminate button after completion
+    terminateBtn.textContent = 'Terminate';
     if (success) {
       resetBtn.style.display = "block";
       sendEmailCheckbox.checked = false;
     } else {
-      progressModal.classList.remove('visible');
       batchStatus.textContent = 'Batch processing failed';
     }
   }

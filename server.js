@@ -93,7 +93,6 @@ app.post('/upload-background', upload.single('background'), async (req, res) => 
 // Delete background image
 app.post('/delete-background', express.json(), async (req, res) => {
   const { imageId } = req.body;
-  console.log(imageId);
   if (!imageId) {
     return res.status(400).json({ error: 'Image ID required' });
   }
@@ -131,7 +130,6 @@ app.post('/generate-pdfs', async (req, res) => {
       const settings = student.settings;
       const text = replacePlaceholders(paragraph, student.data);
       const fontPath = path.join(__dirname, 'fonts','normal', `${settings.fontFamily}.ttf`);
-      console.log(fontPath);
       let fontFile = settings.fontFamily;
 
       try {

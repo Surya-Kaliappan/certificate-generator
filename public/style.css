@@ -201,6 +201,7 @@ section.sidebar {
 
 .button-bar {
     background: var(--sidebar-bg);
+    width: auto;
     padding: 12px auto;
     display: flex;
     gap: 8px;
@@ -490,6 +491,7 @@ section.main {
     z-index: 1200;
     width: 450px;
     max-width: 90%;
+    min-height: 200px; /* Prevent compression */
 }
 
 #progressModal.visible {
@@ -498,8 +500,7 @@ section.main {
 
 #progressModal p {
     font-size: 18px;
-    margin-top: 15px;
-    margin-bottom: 8px;
+    margin: 12px 0; /* Increased for spacing */
     color: var(--text-light, #ffffff);
 }
 
@@ -509,20 +510,83 @@ section.main {
     background: rgba(255, 255, 255, 0.2);
     border-radius: 4px;
     overflow: hidden;
+    margin: 8px 0; /* Added for spacing */
 }
 
 #progressModal #pdfProgressFill {
     height: 100%;
     background: green;
-    /* Fallback color */
     transition: width 0.3s ease;
 }
 
 #progressModal #emailProgressFill {
     height: 100%;
     background: orange;
-    /* Fallback color */
     transition: width 0.3s ease;
+}
+
+/* Loading spinner */
+.spinner {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top: 3px solid var(--text-light, #ffffff);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Terminate button */
+.terminate-btn {
+    margin: 25px auto 0; /* Center with top margin */
+    padding: 10px 18px;
+    background-color: #dc3545;
+    color: var(--text-light, #ffffff);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 15px;
+    border-radius: 5px;
+    display: block; /* Ensure centering */
+    width: 150px;
+}
+
+.terminate-btn:hover:not(:disabled) {
+    background-color: #c82333;
+}
+
+.terminate-btn:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 123, 255, 0.5);
+    z-index: 1199;
+    display: none;
+}
+
+.modal-backdrop.visible {
+    display: block;
+}
+
+/* Disable background interaction */
+.main.disabled, .sidebar.disabled {
+    pointer-events: none;
+    opacity: 0.7;
 }
 
 @media (max-width: 768px) {
